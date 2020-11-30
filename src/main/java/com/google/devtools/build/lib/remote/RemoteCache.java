@@ -109,12 +109,14 @@ public class RemoteCache implements AutoCloseable {
   protected final RemoteCacheClient cacheProtocol;
   protected final RemoteOptions options;
   protected final DigestUtil digestUtil;
+  protected final ActionResultDownloader actionResultDownloader;
 
   public RemoteCache(
-      RemoteCacheClient cacheProtocol, RemoteOptions options, DigestUtil digestUtil) {
+      RemoteCacheClient cacheProtocol, RemoteOptions options, DigestUtil digestUtil, ActionResultDownloader actionResultDownloader) {
     this.cacheProtocol = cacheProtocol;
     this.options = options;
     this.digestUtil = digestUtil;
+    this.actionResultDownloader = actionResultDownloader;
   }
 
   public ActionResult downloadActionResult(ActionKey actionKey, boolean inlineOutErr)
@@ -302,6 +304,30 @@ public class RemoteCache implements AutoCloseable {
       FileOutErr origOutErr,
       OutputFilesLocker outputFilesLocker)
       throws ExecException, IOException, InterruptedException {
+    if (actionResultDownloader != null) {
+      List<ListenableFuture<Void>> downloads = new ArrayList<>();
+      downloads.add(actionResultDownloader.downloadActionResult(result));
+
+      FileOutErr tmpOutErr = null;
+      if (origOutErr != null) {
+        tmpOutErr = origOutErr.childOutErr();
+      }
+      downloads.addAll(downloadOutErr(result, tmpOutErr));
+
+      try {
+        waitForBulkTransfer(downloads, /* cancelRemainingOnInterrupt=*/ true);
+        if (tmpOutErr != null) {
+          FileOutErr.dump(tmpOutErr, origOutErr);
+        }
+      } finally {
+        if (tmpOutErr != null) {
+          tmpOutErr.clearOut();
+          tmpOutErr.clearErr();
+        }
+      }
+      return;
+    }
+
     ActionResultMetadata metadata = parseActionResultMetadata(result, execRoot);
 
     List<ListenableFuture<FileMetadata>> downloads =
@@ -482,8 +508,8 @@ public class RemoteCache implements AutoCloseable {
     return outerF;
   }
 
-  private List<ListenableFuture<FileMetadata>> downloadOutErr(ActionResult result, OutErr outErr) {
-    List<ListenableFuture<FileMetadata>> downloads = new ArrayList<>();
+  private <T> List<ListenableFuture<T>> downloadOutErr(ActionResult result, OutErr outErr) {
+    List<ListenableFuture<T>> downloads = new ArrayList<>();
     if (!result.getStdoutRaw().isEmpty()) {
       try {
         result.getStdoutRaw().writeTo(outErr.getOutputStream());

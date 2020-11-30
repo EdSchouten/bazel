@@ -39,8 +39,8 @@ import java.util.Map;
 public class RemoteExecutionCache extends RemoteCache {
 
   public RemoteExecutionCache(
-      RemoteCacheClient protocolImpl, RemoteOptions options, DigestUtil digestUtil) {
-    super(protocolImpl, options, digestUtil);
+      RemoteCacheClient protocolImpl, RemoteOptions options, DigestUtil digestUtil, ActionResultDownloader actionResultDownloader) {
+    super(protocolImpl, options, digestUtil, actionResultDownloader);
   }
 
   private void uploadMissing(Map<Digest, Path> files, Map<Digest, ByteString> blobs)

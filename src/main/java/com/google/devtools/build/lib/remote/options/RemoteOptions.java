@@ -433,6 +433,28 @@ public final class RemoteOptions extends OptionsBase {
               + " discard the remotely cached values if they don't match the expected value.")
   public boolean remoteVerifyDownloads;
 
+  @Option(
+      name = "remote_output_service",
+      defaultValue = "null",
+      documentationCategory = OptionDocumentationCategory.REMOTE,
+      effectTags = {OptionEffectTag.UNKNOWN},
+      help =
+          "A URI of a remote output service. A remote output service is a daemon that runs next "
+              + "to Bazel, managing the contents of the bazel-out/ directory. It may use systems "
+              + "like FUSE to add features such as snapshotting and lazy loading of objects stored "
+              + "in a remote Content Addressable Storage.")
+  public String remoteOutputService;
+
+  @Option(
+      name = "remote_output_service_output_path_prefix",
+      defaultValue = "null",
+      documentationCategory = OptionDocumentationCategory.REMOTE,
+      effectTags = {OptionEffectTag.UNKNOWN},
+      help =
+          "The path at which all output path directories are visible that are managed by the "
+              + "remote output service.")
+  public String remoteOutputServiceOutputPathPrefix;
+
   // The below options are not configurable by users, only tests.
   // This is part of the effort to reduce the overall number of flags.
 

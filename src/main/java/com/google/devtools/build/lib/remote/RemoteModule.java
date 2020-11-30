@@ -77,6 +77,7 @@ import com.google.devtools.build.lib.util.io.AsynchronousFileOutputStream;
 import com.google.devtools.build.lib.vfs.DigestHashFunction;
 import com.google.devtools.build.lib.vfs.OutputService;
 import com.google.devtools.build.lib.vfs.Path;
+import com.google.devtools.build.lib.vfs.PathFragment;
 import com.google.devtools.common.options.OptionsBase;
 import com.google.devtools.common.options.OptionsParsingResult;
 import io.grpc.CallCredentials;
@@ -100,7 +101,7 @@ public final class RemoteModule extends BlazeModule {
   private RemoteActionContextProvider actionContextProvider;
   private RemoteActionInputFetcher actionInputFetcher;
   private RemoteOutputsMode remoteOutputsMode;
-  private RemoteOutputService remoteOutputService;
+  private OutputService remoteOutputService;
 
   private final BuildEventArtifactUploaderFactoryDelegate
       buildEventArtifactUploaderFactoryDelegate = new BuildEventArtifactUploaderFactoryDelegate();
@@ -232,7 +233,7 @@ public final class RemoteModule extends BlazeModule {
         handleInitFailure(env, e, Code.CACHE_INIT_FAILURE);
         return;
       }
-      RemoteCache remoteCache = new RemoteCache(cacheClient, remoteOptions, digestUtil);
+      RemoteCache remoteCache = new RemoteCache(cacheClient, remoteOptions, digestUtil, null);
       actionContextProvider =
           RemoteActionContextProvider.createForRemoteCaching(
               env, remoteCache, /* retryScheduler= */ null, digestUtil);
@@ -380,6 +381,34 @@ public final class RemoteModule extends BlazeModule {
     Context repoContext =
         TracingMetadataUtils.contextWithMetadata(buildRequestId, invocationId, "repository_rule");
 
+    ActionResultDownloader actionResultDownloader = null;
+    Preconditions.checkState(remoteOutputService == null, "remoteOutputService must be null");
+    if (remoteOptions.remoteOutputService != null) {
+      try {
+        ReferenceCountedChannel channel =
+            RemoteCacheClientFactory.createGrpcChannel(
+                remoteOptions.remoteOutputService,
+                remoteOptions.remoteProxy,
+                authAndTlsOptions,
+                ImmutableList.of());
+        GrpcRemoteOutputService grpcRemoteOutputService = new GrpcRemoteOutputService(
+            channel,
+            "foobar123",
+            PathFragment.create(remoteOptions.remoteOutputServiceOutputPathPrefix),
+            remoteOptions.remoteInstanceName,
+            digestUtil.getDigestFunction());
+        remoteOutputService = grpcRemoteOutputService;
+        actionResultDownloader = grpcRemoteOutputService;
+      } catch (IOException e) {
+        handleInitFailure(env, e, Code.CACHE_CHANNEL_INIT_FAILURE);
+        return;
+      }
+    } else {
+      if (remoteOutputsMode != null && !remoteOutputsMode.downloadAllOutputs()) {
+        remoteOutputService = new RemoteOutputService();
+      }
+    }
+
     if (enableRemoteExecution) {
       RemoteRetrier execRetrier =
           new RemoteRetrier(
@@ -391,7 +420,7 @@ public final class RemoteModule extends BlazeModule {
           new GrpcRemoteExecutor(execChannel.retain(), credentials, execRetrier, remoteOptions);
       execChannel.release();
       RemoteExecutionCache remoteCache =
-          new RemoteExecutionCache(cacheClient, remoteOptions, digestUtil);
+          new RemoteExecutionCache(cacheClient, remoteOptions, digestUtil, actionResultDownloader);
       actionContextProvider =
           RemoteActionContextProvider.createForRemoteExecution(
               env, remoteCache, remoteExecutor, retryScheduler, digestUtil, logDir);
@@ -420,7 +449,7 @@ public final class RemoteModule extends BlazeModule {
         }
       }
 
-      RemoteCache remoteCache = new RemoteCache(cacheClient, remoteOptions, digestUtil);
+      RemoteCache remoteCache = new RemoteCache(cacheClient, remoteOptions, digestUtil, actionResultDownloader);
       actionContextProvider =
           RemoteActionContextProvider.createForRemoteCaching(
               env, remoteCache, retryScheduler, digestUtil);
@@ -668,16 +697,12 @@ public final class RemoteModule extends BlazeModule {
           new RemoteActionInputFetcher(
               actionContextProvider.getRemoteCache(), env.getExecRoot(), requestMetadata);
       builder.setActionInputPrefetcher(actionInputFetcher);
-      remoteOutputService.setActionInputFetcher(actionInputFetcher);
+      ((RemoteOutputService) remoteOutputService).setActionInputFetcher(actionInputFetcher);
     }
   }
 
   @Override
   public OutputService getOutputService() {
-    Preconditions.checkState(remoteOutputService == null, "remoteOutputService must be null");
-    if (remoteOutputsMode != null && !remoteOutputsMode.downloadAllOutputs()) {
-      remoteOutputService = new RemoteOutputService();
-    }
     return remoteOutputService;
   }
 
