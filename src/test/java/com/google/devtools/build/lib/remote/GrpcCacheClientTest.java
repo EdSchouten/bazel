@@ -269,7 +269,7 @@ public class GrpcCacheClientTest {
   public void testVirtualActionInputSupport() throws Exception {
     RemoteOptions options = Options.getDefaults(RemoteOptions.class);
     RemoteExecutionCache client =
-        new RemoteExecutionCache(newClient(options), options, DIGEST_UTIL);
+        new RemoteExecutionCache(newClient(options), options, DIGEST_UTIL, null);
     PathFragment execPath = PathFragment.create("my/exec/path");
     VirtualActionInput virtualActionInput =
         ActionsTestUtil.createVirtualActionInput(execPath, "hello");
@@ -378,7 +378,7 @@ public class GrpcCacheClientTest {
   public void testDownloadAllResults() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     Digest fooDigest = DIGEST_UTIL.computeAsUtf8("foo-contents");
     Digest barDigest = DIGEST_UTIL.computeAsUtf8("bar-contents");
@@ -402,7 +402,7 @@ public class GrpcCacheClientTest {
   public void testDownloadAllResultsForSiblingLayoutAndRelativeToInputRoot() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
     RemotePathResolver remotePathResolver = new SiblingRepositoryLayoutResolver(execRoot, true);
 
     Digest fooDigest = DIGEST_UTIL.computeAsUtf8("foo-contents");
@@ -427,7 +427,7 @@ public class GrpcCacheClientTest {
   public void testDownloadDirectory() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     Digest fooDigest = DIGEST_UTIL.computeAsUtf8("foo-contents");
     Digest quxDigest = DIGEST_UTIL.computeAsUtf8("qux-contents");
@@ -464,7 +464,7 @@ public class GrpcCacheClientTest {
   public void testDownloadDirectoryEmpty() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     Tree barTreeMessage = Tree.newBuilder().setRoot(Directory.newBuilder()).build();
     Digest barTreeDigest = DIGEST_UTIL.compute(barTreeMessage);
@@ -484,7 +484,7 @@ public class GrpcCacheClientTest {
   public void testDownloadDirectoryNested() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     Digest fooDigest = DIGEST_UTIL.computeAsUtf8("foo-contents");
     Digest quxDigest = DIGEST_UTIL.computeAsUtf8("qux-contents");
@@ -578,7 +578,7 @@ public class GrpcCacheClientTest {
   public void testUploadDirectory() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     final Digest fooDigest =
         fakeFileCache.createScratchInput(ActionInputHelper.fromPath("a/foo"), "xyz");
@@ -636,7 +636,7 @@ public class GrpcCacheClientTest {
   public void testUploadDirectoryEmpty() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     final Digest barDigest =
         fakeFileCache.createScratchInputDirectory(
@@ -675,7 +675,7 @@ public class GrpcCacheClientTest {
   public void testUploadDirectoryNested() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     final Digest wobbleDigest =
         fakeFileCache.createScratchInput(ActionInputHelper.fromPath("bar/test/wobble"), "xyz");
@@ -805,7 +805,7 @@ public class GrpcCacheClientTest {
     serviceRegistry.addService(ServerInterceptors.intercept(actionCache, interceptor));
 
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
     remoteCache.downloadActionResult(
         context,
         DIGEST_UTIL.asActionKey(DIGEST_UTIL.computeAsUtf8("key")),
@@ -816,7 +816,7 @@ public class GrpcCacheClientTest {
   public void testUpload() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     final Digest fooDigest =
         fakeFileCache.createScratchInput(ActionInputHelper.fromPath("a/foo"), "xyz");
@@ -888,7 +888,7 @@ public class GrpcCacheClientTest {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     remoteOptions.maxOutboundMessageSize = 80; // Enough for one digest, but not two.
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     final Digest fooDigest =
         fakeFileCache.createScratchInput(ActionInputHelper.fromPath("a/foo"), "xyz");
@@ -949,7 +949,7 @@ public class GrpcCacheClientTest {
   public void testUploadCacheMissesWithRetries() throws Exception {
     RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
     GrpcCacheClient client = newClient(remoteOptions);
-    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL);
+    RemoteCache remoteCache = new RemoteCache(client, remoteOptions, DIGEST_UTIL, null);
 
     final Digest fooDigest =
         fakeFileCache.createScratchInput(ActionInputHelper.fromPath("a/foo"), "xyz");
